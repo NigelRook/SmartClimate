@@ -32,10 +32,10 @@ REQUIREMENTS = ['numpy==1.13.3', 'scipy==1.00', 'scikit-learn==0.19.1']
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Optional(CONF_ENTITY_ID): cv.entity_id,
+        vol.Required(CONF_ENTITY_ID): cv.entity_id,
         vol.Optional(CONF_SENSORS): [
             vol.Schema({
-                vol.Optional(CONF_ENTITY_ID): cv.entity_id,
+                vol.Required(CONF_ENTITY_ID): cv.entity_id,
                 vol.Optional(CONF_ATTRIBUTE): cv.string
             })
         ]
