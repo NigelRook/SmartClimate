@@ -8,6 +8,7 @@ pre-heat your home at the most appropriate time
 import os
 import pickle
 import logging
+from asyncio import coroutine
 import voluptuous as vol
 
 import homeassistant.util.dt as dt
@@ -44,18 +45,20 @@ CONFIG_SCHEMA = vol.Schema({
 
 _LOGGER = logging.getLogger(__name__)
 
-def setup(hass, config):
+@coroutine
+def async_setup(hass, config):
     '''Set up component'''
     data_file = hass.config.path("{}.pickle".format(DOMAIN))
-    store = DataStore(data_file)
+    store = yield from hass.async_add_job(DataStore, data_file)
 
     entity_id = config[DOMAIN][CONF_ENTITY_ID]
     sensors = config[DOMAIN].get(CONF_SENSORS, [])
     _LOGGER.debug('entity_id=%s, sensors = %s', entity_id, sensors)
     tracker = SmartClimate(hass, store, entity_id, sensors)
+    tracker.listen()
 
     hass.data[DOMAIN] = {
-        STORE : DataStore(data_file),
+        STORE : store,
         TRACKER : tracker
     }
 
@@ -114,14 +117,21 @@ class SmartClimate:
         self._entity_id = entity_id
         self._sensors = sensors
 
-        self._listener = evt.track_state_change(hass, entity_id, self._handle_climate_change)
         self._tracking_state = self.IDLE
 
+        self._listener = None
         self._start_temp = None
         self._target_temp = None
         self._sensor_readings = None
         self._tracking_started_time = None
 
+    @coroutine
+    def listen(self):
+        '''Subscribe to interesting events'''
+        self._listener = yield from evt.async_track_state_change(
+            self._hass, self._entity_id, self._handle_climate_change)
+
+    @coroutine
     def _handle_climate_change(self, _, old_state, new_state):
         _LOGGER.debug('new state for %s: curr=%s, target=%s',
                       self._entity_id,
@@ -149,7 +159,7 @@ class SmartClimate:
                     duration_s = (dt.utcnow() - self._tracking_started_time).total_seconds()
                     _LOGGER.info("Tracking complete for %s, took %s seconds",
                                  self._entity_id, duration_s)
-                    self._tracking_complete(duration_s)
+                    yield from self._hass.async_add_job(self._tracking_complete, duration_s)
                     self._tracking_state = self.IDLE
             else:
                 _LOGGER.info("Tracking aborted for %s, target temperature changed",

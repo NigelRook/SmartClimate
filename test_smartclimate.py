@@ -3,14 +3,14 @@
 import os
 import pickle
 import datetime
+from asyncio import coroutine
 import unittest
 
 from ha_test_common import (
     get_test_config_dir, get_test_home_assistant, mock_state_change_event)
 
 from homeassistant.core import State
-
-import smartclimate
+from homeassistant.setup import async_setup_component
 
 ENTITY_ID = 'climate.test'
 
@@ -52,14 +52,10 @@ class TestSmartClimate(unittest.TestCase):
         self.hass.stop()
         self.cleanup()
 
-    def test_initial_setup(self):
-        '''Test the setup.'''
-        response = smartclimate.setup(self.hass, SIMPLE_CONFIG)
-        self.assertTrue(response)
-
+    @coroutine
     def init(self, config):
         '''Init smartclimate component'''
-        smartclimate.setup(self.hass, config)
+        yield from async_setup_component(self.hass, 'smartclimate', config)
 
     @staticmethod
     def relative_time(time_s):
@@ -83,10 +79,17 @@ class TestSmartClimate(unittest.TestCase):
             pickle.dump(data, file)
         return data
 
+    @coroutine
+    def test_initial_setup(self):
+        '''Test the setup.'''
+        response = yield from async_setup_component(self.hass, 'smartclimate', SIMPLE_CONFIG)
+        self.assertTrue(response)
+
+    @coroutine
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
     def test_records_temperature_change(self, mock):
         '''Test a completed temperature shift gets recorded to the store'''
-        self.init(SIMPLE_CONFIG)
+        yield from self.init(SIMPLE_CONFIG)
 
         old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
         new_state = State(ENTITY_ID, 'Manual', {'temperature': 20., 'current_temperature' : 18.})
@@ -115,11 +118,12 @@ class TestSmartClimate(unittest.TestCase):
                 }
             })
 
+    @coroutine
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
     def test_aborts_test_if_target_temp_reset(self, mock):
         '''Test a completed temperature shift gets recorded to the store'''
         initial_data = self.simple_init_data()
-        self.init(SIMPLE_CONFIG)
+        yield from self.init(SIMPLE_CONFIG)
 
         old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
         new_state = State(ENTITY_ID, 'Manual', {'temperature': 19., 'current_temperature' : 18.})
@@ -137,10 +141,11 @@ class TestSmartClimate(unittest.TestCase):
             data = pickle.load(file)
             self.assertEqual(data, initial_data)
 
+    @coroutine
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
     def test_ignores_intermediate_states(self, mock):
         '''Test a completed temperature shift gets recorded to the store'''
-        self.init(SIMPLE_CONFIG)
+        yield from self.init(SIMPLE_CONFIG)
 
         old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
         new_state = State(ENTITY_ID, 'Manual', {'temperature': 20., 'current_temperature' : 18.})
@@ -175,6 +180,7 @@ class TestSmartClimate(unittest.TestCase):
                 }
             })
 
+    @coroutine
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
     def test_records_additional_sensors(self, mock):
         '''Test a completed temperature shift gets recorded to the store'''
@@ -192,7 +198,7 @@ class TestSmartClimate(unittest.TestCase):
                 ]
             }
         }
-        self.init(config)
+        yield from self.init(config)
 
         self.hass.states.set('sensor.sensor1', '8.0')
         self.hass.states.set('sensor.sensor2', 'on', {'attr': '16.0'})
