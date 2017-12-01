@@ -184,11 +184,3 @@ class SmartClimate:
         }
         self._store.data[self._entity_id][DATAPOINTS].append(datapoint)
         self._store.save()
-
-
-
-
-
-
-
-
