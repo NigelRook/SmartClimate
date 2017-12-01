@@ -13,6 +13,7 @@ import voluptuous as vol
 
 import homeassistant.util.dt as dt
 
+from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv, event as evt
 from homeassistant.const import (
     CONF_ENTITY_ID, CONF_SENSORS, ATTR_TEMPERATURE)
@@ -55,7 +56,7 @@ def async_setup(hass, config):
     sensors = config[DOMAIN].get(CONF_SENSORS, [])
     _LOGGER.debug('entity_id=%s, sensors = %s', entity_id, sensors)
     tracker = SmartClimate(hass, store, entity_id, sensors)
-    tracker.listen()
+    hass.async_run_job(tracker.listen)
 
     hass.data[DOMAIN] = {
         STORE : store,
@@ -125,11 +126,11 @@ class SmartClimate:
         self._sensor_readings = None
         self._tracking_started_time = None
 
-    @coroutine
+    @callback
     def listen(self):
         '''Subscribe to interesting events'''
-        self._listener = yield from evt.async_track_state_change(
-            self._hass, self._entity_id, self._handle_climate_change)
+        _LOGGER.debug('listening for %s state changes', self._entity_id)
+        self._listener = evt.async_track_state_change(self._hass, self._entity_id, self._handle_climate_change)
 
     @coroutine
     def _handle_climate_change(self, _, old_state, new_state):
