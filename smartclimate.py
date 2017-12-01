@@ -108,15 +108,14 @@ class SmartClimate:
 
     def __init__(self, hass, store, entity_id, sensors):
         self._hass = hass
+        self._entity_id = entity_id
+        self._sensors = sensors
 
         self._store = store
         if entity_id not in self._store.data:
             self._store.data[entity_id] = {}
         if DATAPOINTS not in self._store.data[entity_id]:
             self._store.data[entity_id][DATAPOINTS] = []
-
-        self._entity_id = entity_id
-        self._sensors = sensors
 
         self._tracking_state = self.IDLE
 
