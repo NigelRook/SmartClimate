@@ -1,9 +1,8 @@
 ''' Tests for the smartclimate component '''
-# pylint: disable=locally-disabled, line-too-long, invalid-name
+# pylint: disable=locally-disabled, line-too-long, invalid-name, R0201
 import os
 import pickle
 import datetime
-from asyncio import coroutine
 import unittest
 
 from ha_test_common import (
@@ -11,12 +10,17 @@ from ha_test_common import (
 
 from homeassistant.core import State
 from homeassistant.setup import async_setup_component
+from homeassistant.util.async import run_coroutine_threadsafe
+
+import smartclimate
 
 ENTITY_ID = 'climate.test'
 
 SIMPLE_CONFIG = {
     'smartclimate': {
-        'entity_id': ENTITY_ID
+        'test': {
+            'entity_id': ENTITY_ID
+        }
     }
 }
 
@@ -70,7 +74,7 @@ class TestSmartClimate(unittest.TestCase):
         '''Init data non-empty store for simple config'''
         data = {
             '_version': 1,
-            ENTITY_ID: {
+            'test': {
                 'datapoints': [{
                     'start_temp': 18.,
                     'target_temp': 20.,
@@ -137,7 +141,7 @@ class TestSmartClimate(unittest.TestCase):
             data = pickle.load(file)
             self.assertEqual(data, {
                 '_version': 1,
-                ENTITY_ID: {
+                'test': {
                     'datapoints': [{
                         'start_temp': 18.,
                         'target_temp': 20.,
@@ -197,7 +201,7 @@ class TestSmartClimate(unittest.TestCase):
             data = pickle.load(file)
             self.assertEqual(data, {
                 '_version': 1,
-                ENTITY_ID: {
+                'test': {
                     'datapoints': [{
                         'start_temp': 18.,
                         'target_temp': 20.,
@@ -212,16 +216,18 @@ class TestSmartClimate(unittest.TestCase):
         '''Test a completed temperature shift gets recorded to the store'''
         config = {
             'smartclimate': {
-                'entity_id': ENTITY_ID,
-                'sensors': [
-                    {
-                        'entity_id': 'sensor.sensor1'
-                    },
-                    {
-                        'entity_id': 'sensor.sensor2',
-                        'attribute': 'attr'
-                    }
-                ]
+                'test': {
+                    'entity_id': ENTITY_ID,
+                    'sensors': [
+                        {
+                            'entity_id': 'sensor.sensor1'
+                        },
+                        {
+                            'entity_id': 'sensor.sensor2',
+                            'attribute': 'attr'
+                        }
+                    ]
+                }
             }
         }
         self.init(config)
@@ -247,7 +253,7 @@ class TestSmartClimate(unittest.TestCase):
             data = pickle.load(file)
             self.assertEqual(data, {
                 '_version': 1,
-                ENTITY_ID: {
+                'test': {
                     'datapoints': [{
                         'start_temp': 18.,
                         'target_temp': 20.,
@@ -260,3 +266,64 @@ class TestSmartClimate(unittest.TestCase):
                 }
             })
 
+
+    @unittest.mock.patch('homeassistant.util.dt.utcnow')
+    def test_records_temperature_change_for_multiple_entities(self, mock):
+        '''Test a completed temperature shift gets recorded to the store for two seperate entities'''
+        self.init({
+            'smartclimate': {
+                'test1': {
+                    'entity_id': 'climate.test1'
+                },
+                'test2': {
+                    'entity_id': 'climate.test2'
+                }
+            }
+        })
+
+        old_state1 = State('climate.test1', 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
+        new_state1 = State('climate.test1', 'Manual', {'temperature': 20., 'current_temperature' : 18.})
+        mock.return_value = self.relative_time(0)
+        mock_state_change_event(self.hass, new_state1, old_state1)
+        self.block_till_done()
+
+        old_state2 = State('climate.test2', 'Smart Schedule', {'temperature': 19., 'current_temperature' : 19.})
+        new_state2 = State('climate.test2', 'Manual', {'temperature': 21., 'current_temperature' : 19.})
+        mock.return_value = self.relative_time(100)
+        mock_state_change_event(self.hass, new_state2, old_state2)
+        self.block_till_done()
+
+        old_state1 = new_state1
+        new_state1 = State('climate.test1', 'Smart Schedule', {'temperature': 20., 'current_temperature' : 20.})
+        mock.return_value = self.relative_time(5100)
+        mock_state_change_event(self.hass, new_state1, old_state1)
+        self.block_till_done()
+
+        old_state2 = new_state1
+        new_state2 = State('climate.test2', 'Smart Schedule', {'temperature': 21., 'current_temperature' : 21.})
+        mock.return_value = self.relative_time(5201)
+        mock_state_change_event(self.hass, new_state2, old_state2)
+        self.block_till_done()
+
+        self.assertTrue(os.path.isfile(self.store))
+        with open(self.store, 'rb') as file:
+            data = pickle.load(file)
+            self.assertEqual(data, {
+                '_version': 1,
+                'test1': {
+                    'datapoints': [{
+                        'start_temp': 18.,
+                        'target_temp': 20.,
+                        'sensor_readings': {},
+                        'duration_s': 5100.0
+                    }]
+                },
+                'test2': {
+                    'datapoints': [{
+                        'start_temp': 19.,
+                        'target_temp': 21.,
+                        'sensor_readings': {},
+                        'duration_s': 5101.0
+                    }]
+                }
+            })

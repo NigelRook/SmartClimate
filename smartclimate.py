@@ -25,7 +25,7 @@ CONF_ATTRIBUTE = 'attribute'
 ATTR_CURRENT_TEMPERATURE = 'current_temperature'
 
 STORE = 'store'
-TRACKER = 'tracker'
+TRACKERS = 'trackers'
 DATAPOINTS = 'datapoints'
 
 DEPENDENCIES = ['climate']
@@ -34,13 +34,15 @@ REQUIREMENTS = ['numpy==1.13.3', 'scipy==1.00', 'scikit-learn==0.19.1']
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_ENTITY_ID): cv.entity_id,
-        vol.Optional(CONF_SENSORS): [
-            vol.Schema({
-                vol.Required(CONF_ENTITY_ID): cv.entity_id,
-                vol.Optional(CONF_ATTRIBUTE): cv.string
-            })
-        ]
+        cv.slug: vol.Schema({
+            vol.Required(CONF_ENTITY_ID): cv.entity_id,
+            vol.Optional(CONF_SENSORS): [
+                vol.Schema({
+                    vol.Required(CONF_ENTITY_ID): cv.entity_id,
+                    vol.Optional(CONF_ATTRIBUTE): cv.string
+                })
+            ]
+        })
     }),
 }, extra=vol.ALLOW_EXTRA)
 
@@ -52,18 +54,22 @@ def async_setup(hass, config):
     data_file = hass.config.path("{}.pickle".format(DOMAIN))
     store = yield from hass.async_add_job(DataStore, data_file)
 
-    entity_id = config[DOMAIN][CONF_ENTITY_ID]
-    sensors = config[DOMAIN].get(CONF_SENSORS, [])
-    _LOGGER.debug('entity_id=%s, sensors = %s', entity_id, sensors)
-    tracker = SmartClimate(hass, store, entity_id, sensors)
-    hass.async_run_job(tracker.listen)
+    _LOGGER.debug('config = %s', config[DOMAIN])
+    trackers = {name: init_entity_from_config(hass, store, name, entity_config)
+                for name, entity_config in config[DOMAIN].items()}
+    for _, tracker in trackers.items():
+        hass.async_run_job(tracker.listen)
 
     hass.data[DOMAIN] = {
         STORE : store,
-        TRACKER : tracker
+        TRACKERS : trackers
     }
 
     return True
+
+def init_entity_from_config(hass, store, name, entity_config):
+    '''Init a main entity class from its config'''
+    return SmartClimate(hass, store, name, entity_config[CONF_ENTITY_ID], entity_config[CONF_SENSORS])
 
 class DataStore:
     '''Data store for SmartClimate'''
@@ -106,7 +112,9 @@ class SmartClimate:
     IDLE = 'idle'
     TRACKING = 'tracking'
 
-    def __init__(self, hass, store, entity_id, sensors):
+    def __init__(self, hass, store, name, entity_id, sensors):
+        _LOGGER.debug('Initialising %s with entity_id=%s and sensors=%s', name, entity_id, sensors)
+        self._name = name
         self._hass = hass
         self._entity_id = entity_id
         self._sensors = sensors
@@ -192,5 +200,5 @@ class SmartClimate:
             'sensor_readings': self._sensor_readings,
             'duration_s' : duration_s
         }
-        self._store.data[self._entity_id][DATAPOINTS].append(datapoint)
+        self._store.data[self._name][DATAPOINTS].append(datapoint)
         self._store.save()
