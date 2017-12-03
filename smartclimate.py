@@ -55,7 +55,7 @@ def async_setup(hass, config):
     store = yield from hass.async_add_job(DataStore, data_file)
 
     _LOGGER.debug('config = %s', config[DOMAIN])
-    trackers = {name: init_entity_from_config(hass, store, name, entity_config)
+    trackers = {name: SmartClimate(hass, store, name, entity_config)
                 for name, entity_config in config[DOMAIN].items()}
     for _, tracker in trackers.items():
         hass.async_run_job(tracker.listen)
@@ -66,10 +66,6 @@ def async_setup(hass, config):
     }
 
     return True
-
-def init_entity_from_config(hass, store, name, entity_config):
-    '''Init a main entity class from its config'''
-    return SmartClimate(hass, store, name, entity_config[CONF_ENTITY_ID], entity_config[CONF_SENSORS])
 
 class DataStore:
     '''Data store for SmartClimate'''
@@ -112,18 +108,18 @@ class SmartClimate:
     IDLE = 'idle'
     TRACKING = 'tracking'
 
-    def __init__(self, hass, store, name, entity_id, sensors):
-        _LOGGER.debug('Initialising %s with entity_id=%s and sensors=%s', name, entity_id, sensors)
+    def __init__(self, hass, store, name, config):
+        _LOGGER.debug('Initialising %s with config %s', name, config)
         self._name = name
         self._hass = hass
-        self._entity_id = entity_id
-        self._sensors = sensors
+        self._entity_id = config[CONF_ENTITY_ID]
+        self._sensors = config.get(CONF_SENSORS, [])
 
         self._store = store
-        if entity_id not in self._store.data:
-            self._store.data[entity_id] = {}
-        if DATAPOINTS not in self._store.data[entity_id]:
-            self._store.data[entity_id][DATAPOINTS] = []
+        if self._name not in self._store.data:
+            self._store.data[self._name] = {}
+        if DATAPOINTS not in self._store.data[self._name]:
+            self._store.data[self._name][DATAPOINTS] = []
 
         self._tracking_state = self.IDLE
 

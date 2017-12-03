@@ -1,6 +1,7 @@
 ''' Tests for the smartclimate component '''
 # pylint: disable=locally-disabled, line-too-long, invalid-name, R0201
 import os
+from shutil import copy2, rmtree
 import pickle
 import datetime
 import unittest
@@ -38,23 +39,36 @@ class TestSmartClimate(unittest.TestCase):
           o = outside temperature in *C
     '''
 
-    def cleanup(self):
-        '''Cleanup any data created from the tests.'''
-        if os.path.isfile(self.store):
-            os.remove(self.store)
+    setUpClassRun = False
+    @classmethod
+    def setUpClass(cls):
+        config_path = get_test_config_dir()
+        if os.path.isdir(config_path):
+            rmtree(config_path)
+        os.mkdir(config_path)
+        custom_components_path = os.path.join(config_path, 'custom_components')
+        os.mkdir(custom_components_path)
+        copy2(os.path.join(os.path.dirname(__file__), 'smartclimate.py'), custom_components_path)
+        cls.setUpClassRun = True
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(get_test_config_dir())
+        cls.setUpClassRun = False
 
     def setUp(self):
         '''Initialize values for this test case class.'''
+        if not self.setUpClassRun:
+            self.setUpClass()
         self.maxDiff = 2000
-        if not os.path.isdir(get_test_config_dir()):
-            os.mkdir(get_test_config_dir())
         self.hass = get_test_home_assistant()
         self.store = get_test_config_dir('smartclimate.pickle')
 
     def tearDown(self):
         '''Stop everything that was started.'''
         self.hass.stop()
-        self.cleanup()
+        if os.path.isfile(self.store):
+            os.remove(self.store)
 
     def init(self, config):
         '''Init smartclimate component'''
@@ -63,7 +77,7 @@ class TestSmartClimate(unittest.TestCase):
 
     def block_till_done(self):
         '''Block the hass loop until everything is processed'''
-        return run_coroutine_threadsafe(self.hass.block_till_done, self.hass.loop).result()
+        return self.hass.block_till_done()
 
     @staticmethod
     def relative_time(time_s):
