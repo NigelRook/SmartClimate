@@ -224,7 +224,7 @@ class Model:
             self._store.data[self.name][DATAPOINTS] = []
 
         self._tracker = Tracker(hass, config, self._handle_new_datapoint)
-        self._predictor = LinearPredictor()
+        self._predictor = LinearPredictor(name)
 
         datapoints = self._store.data[self.name][DATAPOINTS]
         self._predictor.learn(datapoints)
@@ -389,8 +389,9 @@ class Tracker:
 class LinearPredictor:
     '''Linear regression model for predicting heating time'''
 
-    def __init__(self):
+    def __init__(self, name):
         from sklearn import linear_model
+        self._name = name
         self._predictor = linear_model.LinearRegression()
         self._ready = False
 
@@ -405,7 +406,8 @@ class LinearPredictor:
         for i, (_, value) in enumerate(sensor_readings):
             prediction += value * self._predictor.coef_[i+2]
 
-        _LOGGER.debug("Prediction for %s %s %s: %s", target_temp, current_temp, sensor_readings, prediction)
+        _LOGGER.debug("[%s] Prediction for %s %s %s: %s", self._name,
+                      target_temp, current_temp, sensor_readings, prediction)
         return prediction
 
     @staticmethod
@@ -423,7 +425,8 @@ class LinearPredictor:
         y_values = [datapoint['duration_s'] for datapoint in datapoints]
         self._predictor.fit(x_values, y_values)
         self._ready = True
-        _LOGGER.debug("Intercept:%s Coefficients:%s", self._predictor.intercept_, self._predictor.coef_)
+        _LOGGER.debug("[%s] Intercept:%s Coefficients:%s", self._name,
+                      self._predictor.intercept_, self._predictor.coef_)
 
 class DataStore:
     '''Data store for SmartClimate'''
