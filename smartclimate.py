@@ -38,6 +38,7 @@ ATTR_NEXT_ON = 'next_on'
 
 STORE = 'store'
 MODELS = 'models'
+BINARY_SENSORS = 'binary_sensors'
 DATAPOINTS = 'datapoints'
 
 SCHEDULE_FORMAT = '{}.schedule_{{}}'.format(DOMAIN)
@@ -60,6 +61,39 @@ CONFIG_SCHEMA = vol.Schema({
     }),
 }, extra=vol.ALLOW_EXTRA)
 
+SERVICE_CONFIGURE = 'configure'
+
+CONFIGURE_DESCRIPTIONS = {
+    SERVICE_CONFIGURE: {
+        'description': 'Reconfigure a sensor',
+        'fields': {
+            CONF_ENTITY_ID: {
+                'description': 'Sensor to reconfigure',
+                'example': 'binary_sensor.morning'
+            },
+            CONF_TEMPERATURE: {
+                'description': 'New target temperature',
+                'example': 20
+            },
+            CONF_START: {
+                'description': 'New start time (binary sensor only)',
+                'example': '06:30'
+            },
+            CONF_END: {
+                'description': 'New start time (binary sensor only)',
+                'example': '07:30'
+            }
+        }
+    }
+}
+
+CONFIGURE_SCHEMA = vol.Schema({
+    vol.Required(CONF_ENTITY_ID): cv.entity_id,
+    vol.Optional(CONF_TEMPERATURE): vol.Coerce(float),
+    vol.Optional(CONF_START): cv.time,
+    vol.Optional(CONF_END): cv.time
+})
+
 MIN_DATAPOINTS = 3
 
 _LOGGER = logging.getLogger(__name__)
@@ -80,7 +114,21 @@ def async_setup(hass, config):
 
     hass.data[DOMAIN] = {MODELS: models}
 
+    @coroutine
+    def handle_update_binary_sensor(call):
+        '''update binary sensor configuration'''
+        entity_id = call.data[CONF_ENTITY_ID]
+        temperature = call.data.get(CONF_TEMPERATURE)
+        start = call.data.get(CONF_START)
+        end = call.data.get(CONF_END)
+        yield from hass.data[DOMAIN][BINARY_SENSORS][entity_id].update_config(temperature, start, end)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_CONFIGURE, handle_update_binary_sensor,
+        CONFIGURE_DESCRIPTIONS, schema=CONFIGURE_SCHEMA)
+
     return True
+
 
 class Model:
     '''Main SmartClimate class'''

@@ -17,14 +17,11 @@ from homeassistant.const import (
 from homeassistant.components.binary_sensor import (
     BinarySensorDevice, ENTITY_ID_FORMAT, PLATFORM_SCHEMA)
 
-from ..smartclimate import DOMAIN, MODELS
+from ..smartclimate import DOMAIN, MODELS, CONF_TEMPERATURE, CONF_START, CONF_END, BINARY_SENSORS
 
 DEPENDENCIES = ['smartclimate']
 
 CONF_MODEL = 'model'
-CONF_TEMPERATURE = 'temperature'
-CONF_START = 'start'
-CONF_END = 'end'
 
 ATTR_MODEL = 'model'
 ATTR_START = 'start'
@@ -49,24 +46,32 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     config = PLATFORM_SCHEMA(config)
     name = config[CONF_NAME]
+    entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, name, hass=hass)
     friendly_name = config.get(ATTR_FRIENDLY_NAME, name)
     model = hass.data[DOMAIN][MODELS][config[CONF_MODEL]]
     temperature = config[CONF_TEMPERATURE]
     start = config[CONF_START]
     end = config[CONF_END]
 
-    async_add_devices([SmartClimateBinarySensor(hass, name, friendly_name, model, temperature, start, end)])
+    sensor = SmartClimateBinarySensor(hass, entity_id, friendly_name, model, temperature, start, end)
+
+    async_add_devices([sensor])
+
+    if BINARY_SENSORS not in hass.data[DOMAIN]:
+        hass.data[DOMAIN][BINARY_SENSORS] = {}
+
+    hass.data[DOMAIN][BINARY_SENSORS][entity_id] = sensor
+
     return True
 
 class SmartClimateBinarySensor(BinarySensorDevice):
     """A binary sensor indicating when heating should be on to satisfy a schedule."""
 
-    def __init__(self, hass, name, friendly_name, model, temperature, start, end):
+    def __init__(self, hass, entity_id, friendly_name, model, temperature, start, end):
         """Initialize the Smart Climate schedule."""
         self.hass = hass
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, name, hass=hass)
-        self._name = friendly_name
+        self.entity_id = entity_id
+        self._friendly_name = friendly_name
         self._model = model
         self._temperature = temperature
         self._start = start.replace(tzinfo=dt.DEFAULT_TIME_ZONE)
@@ -80,7 +85,7 @@ class SmartClimateBinarySensor(BinarySensorDevice):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return self._name
+        return self._friendly_name
 
     @property
     def is_on(self):
@@ -115,6 +120,19 @@ class SmartClimateBinarySensor(BinarySensorDevice):
     @coroutine
     def async_added_to_hass(self):
         """Register callbacks."""
+
+        heating_time = self._model.predict(self._temperature)
+        yield from self._update_state(heating_time)
+
+    @coroutine
+    def update_config(self, temperature, start, end):
+        '''update this sensor's configuration'''
+        if temperature is not None:
+            self._temperature = temperature
+        if start is not None:
+            self._start = start.replace(tzinfo=dt.DEFAULT_TIME_ZONE)
+        if end is not None:
+            self._end = end.replace(tzinfo=dt.DEFAULT_TIME_ZONE)
 
         heating_time = self._model.predict(self._temperature)
         yield from self._update_state(heating_time)

@@ -7,8 +7,9 @@ import unittest
 from copy import deepcopy
 
 from homeassistant.core import State
+from homeassistant.const import EVENT_CALL_SERVICE
 from homeassistant.setup import async_setup_component
-from homeassistant.util.async import run_coroutine_threadsafe
+from homeassistant.util.async import run_coroutine_threadsafe, run_callback_threadsafe
 from homeassistant.util.dt import DEFAULT_TIME_ZONE
 
 from . import setup_custom_components, cleanup_custom_components
@@ -367,3 +368,33 @@ class TestSmartClimate(unittest.TestCase):
         fire_time_changed(self.hass, self.local_datetime('08:00'))
         self.block_till_done()
         self.assertState('binary_sensor.test_name', 'off')
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_update_config(self, mock):
+        '''Ensure initial state is sensible'''
+        mock.return_value = self.local_datetime('06:30')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':19.0, 'current_temperature':18.0})
+        response = self.init(SIMPLE_CONFIG)
+        self.assertTrue(response)
+        self.block_till_done()
+        run_callback_threadsafe(self.hass.loop,
+                                self.hass.bus.async_fire, EVENT_CALL_SERVICE, {
+                                    'domain': 'smartclimate',
+                                    'service': 'configure',
+                                    'service_data': {
+                                        'entity_id': 'binary_sensor.test_name',
+                                        'temperature': str(20.0),
+                                        'start': '09:00',
+                                        'end': '10:00',
+                                    }
+                                }).result()
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'off', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(20.0),
+            'start': '09:00',
+            'end': '10:00',
+            'heating_time': 3600,
+            'next_on': '08:00'
+        })
