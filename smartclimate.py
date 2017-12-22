@@ -7,7 +7,6 @@ pre-heat your home at the most appropriate time
 import os
 import pickle
 import logging
-from datetime import timedelta
 from asyncio import coroutine
 from uuid import uuid4
 import voluptuous as vol
@@ -17,12 +16,8 @@ import homeassistant.util.dt as dt
 from homeassistant.core import callback
 from homeassistant.util.async import run_callback_threadsafe
 from homeassistant.helpers import config_validation as cv, event as evt
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.const import (
-    CONF_ENTITY_ID, CONF_SENSORS,
-    ATTR_TEMPERATURE,
-    STATE_UNKNOWN, STATE_OFF, STATE_ON)
+    CONF_ENTITY_ID, CONF_SENSORS, ATTR_TEMPERATURE, STATE_UNKNOWN)
 
 DOMAIN = 'smartclimate'
 
@@ -53,25 +48,15 @@ REQUIREMENTS = ['numpy==1.13.3', 'scipy==1.00', 'scikit-learn==0.19.1']
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_MODELS): vol.Schema({
-            cv.slug: vol.Schema({
-                vol.Required(CONF_ENTITY_ID): cv.entity_id,
-                vol.Optional(CONF_SENSORS): [
-                    vol.Schema({
-                        vol.Required(CONF_ENTITY_ID): cv.entity_id,
-                        vol.Optional(CONF_ATTRIBUTE): cv.string,
-                    })
-                ]
-            })
-        }),
-        vol.Optional(CONF_SCHEDULES, {}): vol.Schema({
-            cv.slug: vol.Schema({
-                vol.Required(CONF_MODEL): cv.slug,
-                vol.Required(CONF_TEMPERATURE): vol.Coerce(float),
-                vol.Required(CONF_START): cv.time,
-                vol.Required(CONF_END): cv.time,
-            }),
-        }),
+        cv.slug: vol.Schema({
+            vol.Required(CONF_ENTITY_ID): cv.entity_id,
+            vol.Optional(CONF_SENSORS): [
+                vol.Schema({
+                    vol.Required(CONF_ENTITY_ID): cv.entity_id,
+                    vol.Optional(CONF_ATTRIBUTE): cv.string,
+                })
+            ]
+        })
     }),
 }, extra=vol.ALLOW_EXTRA)
 
@@ -85,129 +70,17 @@ def async_setup(hass, config):
     data_file = hass.config.path("{}.pickle".format(DOMAIN))
     store = yield from hass.async_add_job(DataStore, data_file)
 
-    component = EntityComponent(_LOGGER, DOMAIN, hass)
-
     _LOGGER.debug('config = %s', config[DOMAIN])
     coros = [hass.loop.run_in_executor(None, Model, hass, store, name, entity_config)
-             for name, entity_config in config[DOMAIN][CONF_MODELS].items()]
+             for name, entity_config in config[DOMAIN].items()]
     models = {}
     for coro in coros:
         model = yield from coro
         models[model.name] = model
 
-    schedules = [Schedule(hass, name, models, config)
-                 for name, config in config[DOMAIN].get(CONF_SCHEDULES, {}).items()]
-
-    yield from component.async_add_entities(schedules)
+    hass.data[DOMAIN] = {MODELS: models}
 
     return True
-
-class Schedule(Entity):
-    '''Main schedule class
-
-       create inside event loop only'''
-    def __init__(self, hass, name, models, config):
-        self.entity_id = SCHEDULE_FORMAT.format(name)
-        self.hass = hass
-        self._name = name
-        self._model = models[config[CONF_MODEL]]
-        self._temperature = config[CONF_TEMPERATURE]
-        self._start = config[CONF_START].replace(tzinfo=dt.DEFAULT_TIME_ZONE)
-        self._end = config[CONF_END].replace(tzinfo=dt.DEFAULT_TIME_ZONE)
-        self._next_on = None
-        self._stop_timer = None
-        self._stop_listening = None
-        self._state = STATE_UNKNOWN
-        self._heating_time = self._model.predict(self._temperature)
-        hass.async_run_job(self._update_state, self._heating_time)
-
-    @coroutine
-    def _update_state(self, heating_time):
-        self._heating_time = heating_time
-        heating_time = heating_time if heating_time is not None else 3600
-        now = dt.now()
-        today_start = dt.dt.datetime.combine(now.date(), self._start)
-        today_end = dt.dt.datetime.combine(now.date(), self._end)
-
-        if now < today_start:
-            self._next_on = dt.as_local(dt.as_utc(today_start) - timedelta(seconds=heating_time))
-            if now < self._next_on:
-                self._set_off_state()
-            else:
-                self._next_on = None
-                self._set_on_state()
-        elif now < today_end:
-            self._next_on = None
-            self._set_on_state()
-        else:
-            tomorrow_start = today_start + timedelta(days=1)
-            self._next_on = dt.as_local(dt.as_utc(tomorrow_start) - timedelta(seconds=heating_time))
-            self._set_off_state()
-
-        yield from self.async_update_ha_state()
-
-    def _set_off_state(self):
-        if not self._stop_listening:
-            self._stop_listening = self._model.listen_for_updates(self._temperature, self._update_state)
-
-        self._set_timer(self._next_on)
-        self._state = STATE_OFF
-
-    def _set_on_state(self):
-        if self._stop_listening:
-            self.hass.async_run_job(self._stop_listening)
-            self._stop_listening = None
-
-        now = dt.now()
-        off_time = dt.dt.datetime.combine(now.date(), self._end)
-        if now > off_time:
-            off_time = off_time + timedelta(days=1)
-
-        self._set_timer(off_time)
-        self._state = STATE_ON
-
-    @coroutine
-    def _timer_handler(self, _):
-        self._stop_timer = None
-        heating_time = self._model.predict(self._temperature)
-        yield from self._update_state(heating_time)
-
-    def _set_timer(self, when):
-        if self._stop_timer:
-            self.hass.async_run_job(self._stop_timer)
-        self._stop_timer = evt.async_track_point_in_time(self.hass, self._timer_handler, when)
-
-    @property
-    def should_poll(self):
-        return False
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def state(self):
-        return self._state
-
-    @property
-    def state_attributes(self):
-        attributes = {
-            ATTR_MODEL: self._model.name,
-            ATTR_TEMPERATURE: str(self._temperature),
-            ATTR_START: self.format_time(self._start),
-            ATTR_END: self.format_time(self._end),
-        }
-        if self._heating_time is not None:
-            attributes[ATTR_HEATING_TIME] = int(round(self._heating_time))
-        if self._state == STATE_OFF:
-            attributes[ATTR_NEXT_ON] = self.format_time(self._next_on)
-        return attributes
-
-    @staticmethod
-    def format_time(time):
-        '''format times for attribute display'''
-        fmt = '%H:%M' if time.second == 0 else '%H:%M:%S'
-        return time.strftime(fmt)
 
 class Model:
     '''Main SmartClimate class'''
