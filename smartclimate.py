@@ -252,6 +252,9 @@ class Tracker:
                 return
 
             self._target_temp, self._start_temp, self._sensor_readings = self._get_readings(new_state)
+            if self._start_temp is None or None in (value for (_, value) in self._sensor_readings):
+                return
+
             self._tracking_state = self.TRACKING
             self._tracking_started_time = dt.utcnow()
 

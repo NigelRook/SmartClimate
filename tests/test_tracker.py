@@ -335,3 +335,40 @@ class TestSmartClimate(unittest.TestCase):
                     }]
                 }
             })
+
+
+    @unittest.mock.patch('homeassistant.util.dt.utcnow')
+    def test_doesnt_record_missing_sensor_reading(self, mock):
+        '''Test a completed temperature shift gets recorded to the store'''
+        initial_data = self.simple_init_data()
+        config = {
+            'smartclimate': {
+                'test': {
+                    'entity_id': ENTITY_ID,
+                    'sensors': [
+                        {
+                            'entity_id': 'sensor.sensor1'
+                        }
+                    ]
+                }
+            }
+        }
+        self.init(config)
+
+        #self.hass.states.set('sensor.sensor1', '8.0')
+        old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
+        new_state = State(ENTITY_ID, 'Manual', {'temperature': 20., 'current_temperature' : 18.})
+        mock.return_value = self.relative_time(0)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        old_state = new_state
+        new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 20., 'current_temperature' : 20.})
+        mock.return_value = self.relative_time(5100)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        self.assertTrue(os.path.isfile(self.store))
+        with open(self.store, 'rb') as file:
+            data = pickle.load(file)
+            self.assertEqual(data, initial_data)
