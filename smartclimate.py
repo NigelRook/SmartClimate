@@ -237,7 +237,7 @@ class Tracker:
                 float(current_temp) if target_temp is not None else None,
                 sensor_readings)
 
-    @coroutine
+    @callback
     def _handle_climate_change(self, _, old_state, new_state):
         _LOGGER.debug('new state for %s: curr=%s, target=%s',
                       self.entity_id,
@@ -285,7 +285,7 @@ class Tracker:
                              self.entity_id)
                 self._tracking_state = self.IDLE
 
-    @coroutine
+    @callback
     def _handle_update(self, event, old_state, new_state): #pylint: disable=unused-argument
         current_temp, sensor_readings = self.get_readings()
         for handler in self._update_handlers.values():
