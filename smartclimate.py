@@ -225,12 +225,12 @@ class Tracker:
     def get_readings(self):
         '''get readings from all relevant sensors'''
         entity_state = self._hass.states.get(self.entity_id)
-        _, current_temp, sensor_readings = self._get_readings(entity_state)
-        return (current_temp, sensor_readings)
-
-    def _get_readings(self, entity_state):
         target_temp = entity_state.attributes.get(ATTR_TEMPERATURE, None) if entity_state else None
         current_temp = entity_state.attributes.get(ATTR_CURRENT_TEMPERATURE, None) if entity_state else None
+        _, current_temp, sensor_readings = self._get_readings(target_temp, current_temp)
+        return (current_temp, sensor_readings)
+
+    def _get_readings(self, target_temp, current_temp):
         sensor_readings = [(self._get_sensor_name(sensor), self._read_sensor(sensor))
                            for sensor in self._sensors]
         return (float(target_temp) if target_temp is not None else None,
@@ -247,43 +247,58 @@ class Tracker:
         if not old_state:
             return
 
-        if ATTR_TEMPERATURE not in new_state.attributes or \
-           not self._converts_to_float(new_state.attributes[ATTR_TEMPERATURE]) or \
-           ATTR_CURRENT_TEMPERATURE not in new_state.attributes or \
-           not self._converts_to_float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]):
+        old_temp = new_temp = current_temp = None
+        try:
+            old_temp = float(old_state.attributes[ATTR_TEMPERATURE])
+            new_temp = float(new_state.attributes[ATTR_TEMPERATURE])
+            current_temp = float(new_state.attributes[ATTR_CURRENT_TEMPERATURE])
+        except (KeyError, ValueError):
             return
 
         if self._tracking_state == self.IDLE:
-            if not self._should_begin_monitoring(old_state, new_state):
-                return
-
-            self._target_temp, self._start_temp, self._sensor_readings = self._get_readings(new_state)
-            if self._start_temp is None or None in (value for (_, value) in self._sensor_readings):
-                return
-
-            self._tracking_state = self.TRACKING
-            self._tracking_started_time = dt.utcnow()
-
-            _LOGGER.info('Tracking climate change for %s from %s to %s',
-                         self.entity_id, self._start_temp, self._target_temp)
-            if self._sensor_readings:
-                _LOGGER.debug('initial sensor readings: %s', self._sensor_readings)
-
+            self._handle_idle_climate_change(old_temp, new_temp, current_temp)
         elif self._tracking_state == self.TRACKING:
             if float(new_state.attributes[ATTR_TEMPERATURE]) == self._target_temp:
-                if float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]) < self._target_temp:
-                    return
-
-                duration_s = (dt.utcnow() - self._tracking_started_time).total_seconds()
-                _LOGGER.info("Tracking complete for %s, took %s seconds",
-                             self.entity_id, duration_s)
-                self._tracking_state = self.IDLE
-                self._hass.async_run_job(self._new_datapoint_handler, self._target_temp,
-                                         self._start_temp, self._sensor_readings, duration_s)
+                self._handle_tracked_temp_change(current_temp)
             else:
-                _LOGGER.info("Tracking aborted for %s, target temperature changed",
-                             self.entity_id)
-                self._tracking_state = self.IDLE
+                self._handle_tracked_target_temp_change(new_temp, current_temp)
+
+    def _handle_idle_climate_change(self, old_temp, new_temp, current_temp):
+        if not self._should_begin_monitoring(old_temp, new_temp, current_temp):
+            return
+
+        self._target_temp, self._start_temp, self._sensor_readings = self._get_readings(new_temp, current_temp)
+        if self._start_temp is None or None in (value for (_, value) in self._sensor_readings):
+            return
+
+        self._tracking_state = self.TRACKING
+        self._tracking_started_time = dt.utcnow()
+
+        _LOGGER.info('Tracking climate change for %s from %s to %s',
+                     self.entity_id, self._start_temp, self._target_temp)
+        if self._sensor_readings:
+            _LOGGER.debug('initial sensor readings: %s', self._sensor_readings)
+
+    def _handle_tracked_temp_change(self, current_temp):
+        if current_temp < self._target_temp:
+            return
+
+        self._complete_tracking(current_temp)
+
+    def _handle_tracked_target_temp_change(self, new_temp, current_temp):
+        if new_temp > current_temp:
+            self._target_temp = current_temp
+            return
+
+        self._complete_tracking(current_temp)
+
+    def _complete_tracking(self, end_temp):
+        duration_s = (dt.utcnow() - self._tracking_started_time).total_seconds()
+        _LOGGER.info("Tracking complete for %s, took %s seconds",
+                     self.entity_id, duration_s)
+        self._tracking_state = self.IDLE
+        self._hass.async_run_job(self._new_datapoint_handler, end_temp,
+                                 self._start_temp, self._sensor_readings, duration_s)
 
     @callback
     def _handle_update(self, event, old_state, new_state): #pylint: disable=unused-argument
@@ -291,14 +306,9 @@ class Tracker:
         for handler in self._update_handlers.values():
             self._hass.async_run_job(handler, current_temp, sensor_readings)
 
-    @classmethod
-    def _should_begin_monitoring(cls, old_state, new_state):
-        if ATTR_TEMPERATURE not in old_state.attributes or \
-           not cls._converts_to_float(old_state.attributes[ATTR_TEMPERATURE]):
-            return False
-
-        return (float(new_state.attributes[ATTR_TEMPERATURE]) > float(old_state.attributes[ATTR_TEMPERATURE]) + 0.5 and
-                float(new_state.attributes[ATTR_TEMPERATURE]) > float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]))
+    @staticmethod
+    def _should_begin_monitoring(old_temp, new_temp, current_temp):
+        return new_temp > old_temp + 0.5 and new_temp > current_temp
 
     @staticmethod
     def _get_sensor_name(sensor):
@@ -319,14 +329,6 @@ class Tracker:
             return None
 
         return float(state.state)
-
-    @staticmethod
-    def _converts_to_float(object):
-        try:
-            float(object)
-            return True
-        except ValueError:
-            return False
 
 class LinearPredictor:
     '''Linear regression model for predicting heating time'''

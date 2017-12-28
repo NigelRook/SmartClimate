@@ -159,9 +159,8 @@ class TestSmartClimate(unittest.TestCase):
             })
 
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
-    def test_aborts_tracking_if_target_temp_changed(self, mock):
+    def test_completes_tracking_if_target_temp_changed_to_below_current(self, mock):
         '''nothing is recorded if the target temp is changed while tracking'''
-        initial_data = self.simple_init_data()
         self.init(SIMPLE_CONFIG)
 
         old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
@@ -172,13 +171,97 @@ class TestSmartClimate(unittest.TestCase):
 
         old_state = new_state
         new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.5})
-        mock.return_value = self.relative_time(2400)
+        mock.return_value = self.relative_time(1800)
         mock_state_change_event(self.hass, new_state, old_state)
         self.block_till_done()
 
         with open(self.store, 'rb') as file:
             data = pickle.load(file)
-            self.assertEqual(data, initial_data)
+            self.assertEqual(data, {
+                '_version': 1,
+                'test': {
+                    'datapoints': [{
+                        'start_temp': 18.,
+                        'target_temp': 18.5,
+                        'sensor_readings': [],
+                        'duration_s': 1800.0
+                    }]
+                }
+            })
+
+    @unittest.mock.patch('homeassistant.util.dt.utcnow')
+    def test_conitinues_tracking_if_target_temp_lowered(self, mock):
+        '''nothing is recorded if the target temp is changed while tracking'''
+        self.init(SIMPLE_CONFIG)
+
+        old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
+        new_state = State(ENTITY_ID, 'Manual', {'temperature': 20., 'current_temperature' : 18.})
+        mock.return_value = self.relative_time(0)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        old_state = new_state
+        new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 19., 'current_temperature' : 18.5})
+        mock.return_value = self.relative_time(1800)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        old_state = new_state
+        new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 19., 'current_temperature' : 19.})
+        mock.return_value = self.relative_time(2700)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        with open(self.store, 'rb') as file:
+            data = pickle.load(file)
+            self.assertEqual(data, {
+                '_version': 1,
+                'test': {
+                    'datapoints': [{
+                        'start_temp': 18.,
+                        'target_temp': 19.,
+                        'sensor_readings': [],
+                        'duration_s': 2700.0
+                    }]
+                }
+            })
+
+    @unittest.mock.patch('homeassistant.util.dt.utcnow')
+    def test_conitinues_tracking_if_target_temp_raised(self, mock):
+        '''nothing is recorded if the target temp is changed while tracking'''
+        self.init(SIMPLE_CONFIG)
+
+        old_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 18., 'current_temperature' : 18.})
+        new_state = State(ENTITY_ID, 'Manual', {'temperature': 20., 'current_temperature' : 18.})
+        mock.return_value = self.relative_time(0)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        old_state = new_state
+        new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 21., 'current_temperature' : 18.5})
+        mock.return_value = self.relative_time(1800)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        old_state = new_state
+        new_state = State(ENTITY_ID, 'Smart Schedule', {'temperature': 21., 'current_temperature' : 21.})
+        mock.return_value = self.relative_time(6300)
+        mock_state_change_event(self.hass, new_state, old_state)
+        self.block_till_done()
+
+        with open(self.store, 'rb') as file:
+            data = pickle.load(file)
+            self.assertEqual(data, {
+                '_version': 1,
+                'test': {
+                    'datapoints': [{
+                        'start_temp': 18.,
+                        'target_temp': 21.,
+                        'sensor_readings': [],
+                        'duration_s': 6300.0
+                    }]
+                }
+            })
 
     @unittest.mock.patch('homeassistant.util.dt.utcnow')
     def test_ignores_intermediate_states(self, mock):
