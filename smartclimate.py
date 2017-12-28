@@ -247,6 +247,12 @@ class Tracker:
         if not old_state:
             return
 
+        if ATTR_TEMPERATURE not in new_state.attributes or \
+           not self._converts_to_float(new_state.attributes[ATTR_TEMPERATURE]) or \
+           ATTR_CURRENT_TEMPERATURE not in new_state.attributes or \
+           not self._converts_to_float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]):
+            return
+
         if self._tracking_state == self.IDLE:
             if not self._should_begin_monitoring(old_state, new_state):
                 return
@@ -264,8 +270,8 @@ class Tracker:
                 _LOGGER.debug('initial sensor readings: %s', self._sensor_readings)
 
         elif self._tracking_state == self.TRACKING:
-            if new_state.attributes[ATTR_TEMPERATURE] == self._target_temp:
-                if new_state.attributes[ATTR_CURRENT_TEMPERATURE] < self._target_temp:
+            if float(new_state.attributes[ATTR_TEMPERATURE]) == self._target_temp:
+                if float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]) < self._target_temp:
                     return
 
                 duration_s = (dt.utcnow() - self._tracking_started_time).total_seconds()
@@ -285,10 +291,14 @@ class Tracker:
         for handler in self._update_handlers.values():
             self._hass.async_run_job(handler, current_temp, sensor_readings)
 
-    @staticmethod
-    def _should_begin_monitoring(old_state, new_state):
-        return (new_state.attributes[ATTR_TEMPERATURE] > old_state.attributes[ATTR_TEMPERATURE] + 0.5 and
-                new_state.attributes[ATTR_TEMPERATURE] > new_state.attributes[ATTR_CURRENT_TEMPERATURE])
+    @classmethod
+    def _should_begin_monitoring(cls, old_state, new_state):
+        if ATTR_TEMPERATURE not in old_state.attributes or \
+           not cls._converts_to_float(old_state.attributes[ATTR_TEMPERATURE]):
+            return False
+
+        return (float(new_state.attributes[ATTR_TEMPERATURE]) > float(old_state.attributes[ATTR_TEMPERATURE]) + 0.5 and
+                float(new_state.attributes[ATTR_TEMPERATURE]) > float(new_state.attributes[ATTR_CURRENT_TEMPERATURE]))
 
     @staticmethod
     def _get_sensor_name(sensor):
@@ -309,6 +319,14 @@ class Tracker:
             return None
 
         return float(state.state)
+
+    @staticmethod
+    def _converts_to_float(object):
+        try:
+            float(object)
+            return True
+        except ValueError:
+            return False
 
 class LinearPredictor:
     '''Linear regression model for predicting heating time'''
