@@ -252,7 +252,7 @@ class Tracker:
             old_temp = float(old_state.attributes[ATTR_TEMPERATURE])
             new_temp = float(new_state.attributes[ATTR_TEMPERATURE])
             current_temp = float(new_state.attributes[ATTR_CURRENT_TEMPERATURE])
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             return
 
         if self._tracking_state == self.IDLE:
