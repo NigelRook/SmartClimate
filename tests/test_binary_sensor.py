@@ -370,6 +370,84 @@ class TestSmartClimate(unittest.TestCase):
         self.assertState('binary_sensor.test_name', 'off')
 
     @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_heating_schedule_starting_next_day(self, mock):
+        '''correctly disables if the heating schedule is for the next day'''
+        mock.return_value = self.local_datetime('23:30')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':20.0, 'current_temperature':19.0})
+        config = deepcopy(SIMPLE_CONFIG)
+        config['binary_sensor'][0]['start'] = '02:00'
+        response = self.init(config)
+        self.assertTrue(response)
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'off', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(21.0),
+            'start': '02:00',
+            'end': '08:00',
+            'heating_time': 3600,
+            'next_on': '01:00'
+        })
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_heating_schedule_starting_next_day_but_preheating_today(self, mock):
+        '''correctly enables if the heating schedule is for the next day'''
+        mock.return_value = self.local_datetime('23:30')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':20.0, 'current_temperature':19.0})
+        config = deepcopy(SIMPLE_CONFIG)
+        config['binary_sensor'][0]['start'] = '00:00'
+        response = self.init(config)
+        self.assertTrue(response)
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'on', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(21.0),
+            'start': '00:00',
+            'end': '08:00',
+            'heating_time': 3600,
+        })
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_heating_schedule_on_straddling_midnight(self, mock):
+        '''correctly schedules heating straddling midnight'''
+        mock.return_value = self.local_datetime('23:30')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':20.0, 'current_temperature':19.0})
+        config = deepcopy(SIMPLE_CONFIG)
+        config['binary_sensor'][0]['start'] = '23:00'
+        response = self.init(config)
+        self.assertTrue(response)
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'on', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(21.0),
+            'start': '23:00',
+            'end': '08:00',
+            'heating_time': 3600,
+        })
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_heating_schedule_off_straddling_midnight(self, mock):
+        '''correctly schedules heating straddling midnight'''
+        mock.return_value = self.local_datetime('21:30')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':20.0, 'current_temperature':19.0})
+        config = deepcopy(SIMPLE_CONFIG)
+        config['binary_sensor'][0]['start'] = '23:00'
+        response = self.init(config)
+        self.assertTrue(response)
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'off', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(21.0),
+            'start': '23:00',
+            'end': '08:00',
+            'heating_time': 3600,
+            'next_on': '22:00'
+        })
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
     def test_update_config(self, mock):
         '''Ensure initial state is sensible'''
         mock.return_value = self.local_datetime('06:30')

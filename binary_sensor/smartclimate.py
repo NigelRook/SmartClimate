@@ -142,23 +142,27 @@ class SmartClimateBinarySensor(BinarySensorDevice):
         self._heating_time = heating_time
         heating_time = heating_time if heating_time is not None else 3600
         now = dt.now()
-        today_start = dt.dt.datetime.combine(now.date(), self._start)
-        today_end = dt.dt.datetime.combine(now.date(), self._end)
+        time_now = now.timetz()
 
-        if now < today_start:
-            self._next_on = dt.as_local(dt.as_utc(today_start) - timedelta(seconds=heating_time))
-            if now < self._next_on:
-                self._set_off_state()
-            else:
-                self._next_on = None
-                self._set_on_state()
-        elif now < today_end:
+        # we want the current heating session if there is one, next one otherwise
+        start_date = None
+        if time_now < self._end:
+            # still have some heating to do today, but may hae started yesterday
+            start_date = now.date() if self._start <= self._end else now.date() - timedelta(days=1)
+        else:
+            # heating finishes tomorrow, but may still start today
+            start_date = now.date() if self._start > self._end else now.date() + timedelta(days=1)
+
+        start = dt.as_local(
+            dt.as_utc(dt.dt.datetime.combine(start_date, self._start)) \
+                - timedelta(seconds=heating_time))
+
+        if now < start:
+            self._next_on = start
+            self._set_off_state()
+        else:
             self._next_on = None
             self._set_on_state()
-        else:
-            tomorrow_start = today_start + timedelta(days=1)
-            self._next_on = dt.as_local(dt.as_utc(tomorrow_start) - timedelta(seconds=heating_time))
-            self._set_off_state()
 
         yield from self.async_update_ha_state()
 
