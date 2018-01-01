@@ -293,10 +293,15 @@ class Tracker:
         self._complete_tracking(current_temp)
 
     def _complete_tracking(self, end_temp):
+        self._tracking_state = self.IDLE
+
+        if end_temp <= self._start_temp:
+            _LOGGER.info("Tracking aborted for %s - no temperature change", self.entity_id)
+            return
+
         duration_s = (dt.utcnow() - self._tracking_started_time).total_seconds()
         _LOGGER.info("Tracking complete for %s, took %s seconds",
                      self.entity_id, duration_s)
-        self._tracking_state = self.IDLE
         self._hass.async_run_job(self._new_datapoint_handler, end_temp,
                                  self._start_temp, self._sensor_readings, duration_s)
 
