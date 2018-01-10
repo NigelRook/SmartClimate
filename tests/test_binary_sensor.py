@@ -197,6 +197,26 @@ class TestSmartClimate(unittest.TestCase):
         })
 
     @unittest.mock.patch('homeassistant.util.dt.now')
+    def test_respects_default(self, mock):
+        '''Ensure uses default heating time when no data available'''
+        mock.return_value = self.local_datetime('04:00')
+        self.hass.states.set(ENTITY_ID, 'on', attributes={'temperature':20.0, 'current_temperature':19.0})
+        config = deepcopy(SIMPLE_CONFIG)
+        config['binary_sensor'][0]['default'] = '1800'
+        response = self.init(config)
+        self.assertTrue(response)
+        self.block_till_done()
+        self.assertState('binary_sensor.test_name', 'off', {
+            'friendly_name': 'test_friendly_name',
+            'model': 'test',
+            'temperature': str(21.0),
+            'start': '07:00',
+            'end': '08:00',
+            'heating_time': 1800,
+            'next_on': '06:30'
+        })
+
+    @unittest.mock.patch('homeassistant.util.dt.now')
     def test_on_time_from_learned_data(self, mock):
         '''basic prediction test'''
         mock.return_value = self.local_datetime('04:00')

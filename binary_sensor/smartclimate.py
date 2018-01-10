@@ -22,6 +22,7 @@ from ..smartclimate import DOMAIN, MODELS, CONF_TEMPERATURE, CONF_START, CONF_EN
 DEPENDENCIES = ['smartclimate']
 
 CONF_MODEL = 'model'
+CONF_DEFAULT = 'default'
 
 ATTR_MODEL = 'model'
 ATTR_START = 'start'
@@ -38,6 +39,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_TEMPERATURE): vol.Coerce(float),
     vol.Required(CONF_START): cv.time,
     vol.Required(CONF_END): cv.time,
+    vol.Optional(CONF_DEFAULT, default=3600): vol.Coerce(int)
 })
 
 @coroutine
@@ -52,8 +54,9 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     temperature = config[CONF_TEMPERATURE]
     start = config[CONF_START]
     end = config[CONF_END]
+    default = config[CONF_DEFAULT]
 
-    sensor = SmartClimateBinarySensor(hass, entity_id, friendly_name, model, temperature, start, end)
+    sensor = SmartClimateBinarySensor(hass, entity_id, friendly_name, model, temperature, start, end, default)
 
     async_add_devices([sensor])
 
@@ -67,7 +70,7 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 class SmartClimateBinarySensor(BinarySensorDevice):
     """A binary sensor indicating when heating should be on to satisfy a schedule."""
 
-    def __init__(self, hass, entity_id, friendly_name, model, temperature, start, end):
+    def __init__(self, hass, entity_id, friendly_name, model, temperature, start, end, default):
         """Initialize the Smart Climate schedule."""
         self.hass = hass
         self.entity_id = entity_id
@@ -76,6 +79,7 @@ class SmartClimateBinarySensor(BinarySensorDevice):
         self._temperature = temperature
         self._start = start.replace(tzinfo=dt.DEFAULT_TIME_ZONE)
         self._end = end.replace(tzinfo=dt.DEFAULT_TIME_ZONE)
+        self._default = default
         self._state = None
         self._heating_time = None
         self._next_on = None
@@ -139,8 +143,7 @@ class SmartClimateBinarySensor(BinarySensorDevice):
 
     @coroutine
     def _update_state(self, heating_time):
-        self._heating_time = heating_time
-        heating_time = heating_time if heating_time is not None else 3600
+        self._heating_time = heating_time if heating_time is not None else self._default
         now = dt.now()
         time_now = now.timetz()
 
@@ -155,7 +158,7 @@ class SmartClimateBinarySensor(BinarySensorDevice):
 
         start = dt.as_local(
             dt.as_utc(dt.dt.datetime.combine(start_date, self._start)) \
-                - timedelta(seconds=heating_time))
+                - timedelta(seconds=self._heating_time))
 
         if now < start:
             self._next_on = start

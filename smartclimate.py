@@ -94,8 +94,6 @@ CONFIGURE_SCHEMA = vol.Schema({
     vol.Optional(CONF_END): cv.time
 })
 
-MIN_DATAPOINTS = 3
-
 _LOGGER = logging.getLogger(__name__)
 
 @coroutine
@@ -337,7 +335,6 @@ class Tracker:
 
 class LinearPredictor:
     '''Linear regression model for predicting heating time'''
-
     def __init__(self, name):
         from sklearn import linear_model
         self._name = name
@@ -347,7 +344,7 @@ class LinearPredictor:
     def predict(self, target_temp, current_temp, sensor_readings):
         '''Predict the time to reach target_temp'''
         if not self._ready:
-            return self._predict_dumb(target_temp, current_temp)
+            return None
 
         prediction = (self._predictor.intercept_ +
                       target_temp * self._predictor.coef_[0] +
@@ -359,13 +356,9 @@ class LinearPredictor:
                       target_temp, current_temp, sensor_readings, prediction)
         return prediction
 
-    @staticmethod
-    def _predict_dumb(target_temp, current_temp):
-        return (target_temp - current_temp) * 30 * 60
-
     def learn(self, datapoints):
         '''Intrepret measured data'''
-        if len(datapoints) < MIN_DATAPOINTS:
+        if not self.check_ready(datapoints):
             self._ready = False
             return
 
@@ -376,6 +369,14 @@ class LinearPredictor:
         self._ready = True
         _LOGGER.debug("[%s] Intercept:%s Coefficients:%s", self._name,
                       self._predictor.intercept_, self._predictor.coef_)
+
+    @staticmethod
+    def check_ready(datapoints):
+        '''Return whether there are anough datapoints to make sensible predictions'''
+        if not datapoints:
+            return False
+        num_sensors = len(datapoints[0]['sensor_readings'])
+        return len(datapoints) >= num_sensors + 3
 
 class DataStore:
     '''Data store for SmartClimate'''
