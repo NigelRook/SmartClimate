@@ -1,8 +1,8 @@
-from .sensorset import SensorSet
-from .tracker import Tracker
-from .predictor import LinearPredictor
-from .smartevent import SmartEvent
-from .smartsensor import SmartSensor
+from sensorset import SensorSet
+from tracker import Tracker
+from predictor import LinearPredictor
+from smartevent import SmartEvent
+from smartsensor import SmartSensor
 
 class RoomImpl:
     '''Implementation of Room'''

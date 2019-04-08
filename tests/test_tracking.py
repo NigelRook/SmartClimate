@@ -13,7 +13,7 @@ where t = time to heat in seconds
 for tests with no o, s == o
 '''
 from copy import deepcopy
-from smartclimate.roomimpl import RoomImpl
+from roomimpl import RoomImpl
 from .common import FakeStore, FakeHass, relative_time
 
 # pylint: disable=global-statement

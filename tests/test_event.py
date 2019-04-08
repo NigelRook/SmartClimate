@@ -12,7 +12,7 @@ where t = time to heat in seconds
 
 for tests with no o, s == o
 '''
-from smartclimate.roomimpl import RoomImpl
+from roomimpl import RoomImpl
 from .common import FakeStore, FakeHass, time_of_day
 
 # pylint: disable=global-statement
