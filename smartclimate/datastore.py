@@ -20,13 +20,14 @@ class DataStore(hass.Hass):
         # pylint: disable=attribute-defined-outside-init
         if os.path.exists(self._data_file):
             try:
-                _LOGGER.debug('loading data from %s', self._data_file)
+                _LOGGER.info('Loading data from %s', self._data_file)
                 with open(self._data_file, 'rb') as file:
                     self.data = pickle.load(file) or self._default_data()
             except:
                 _LOGGER.error('Error loading data %s', self._data_file, exc_info=True)
                 raise
         else:
+            _LOGGER.info('No data file found, using blank')
             self.data = self._default_data()
 
     @staticmethod

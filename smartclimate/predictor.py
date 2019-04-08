@@ -13,6 +13,7 @@ class LinearPredictor:
     def predict(self, target_temp, current_temp, sensor_readings):
         '''Predict the time to reach target_temp'''
         if not self._ready:
+            _LOGGER.debug("[%s] Insufficient data, not making prediction")
             return None
 
         prediction = (self._predictor.intercept_ +
@@ -23,8 +24,8 @@ class LinearPredictor:
 
         prediction = int(round(prediction))
 
-        _LOGGER.warning("[%s] Prediction for %s %s %s: %s", self._name,
-                        target_temp, current_temp, sensor_readings, prediction)
+        _LOGGER.debug("[%s] Prediction for %s %s %s: %s", self._name,
+                      target_temp, current_temp, sensor_readings, prediction)
         return prediction
 
     def learn(self, datapoints):
