@@ -24,13 +24,17 @@ class RoomImpl:
         self._tracker = Tracker(self._climate_entity, self._sensors, self)
 
         self._store = self.hass.get_app(self.hass.args["store"])
-        if self.hass.name not in self._store.data:
-            self._store.data[self.hass.name] = {}
-        if "datapoints" not in self._store.data[self.hass.name]:
-            self._store.data[self.hass.name]["datapoints"] = []
+        datapoints = None
+        with self._store.lock:
+            if self.hass.name not in self._store.data:
+                self._store.data[self.hass.name] = {}
+            if "datapoints" not in self._store.data[self.hass.name]:
+                self._store.data[self.hass.name]["datapoints"] = []
+
+            datapoints = self._store.data[self.hass.name]["datapoints"]
 
         self.predictor = LinearPredictor(self.hass.name)
-        self.predictor.learn(self._store.data[self.hass.name]["datapoints"])
+        self.predictor.learn(datapoints)
 
         self.hass.listen_state(self._handle_climate_updated, self._climate_entity)
         for sensor in self._sensors:
@@ -90,9 +94,12 @@ class RoomImpl:
             'sensor_readings': sensor_readings,
             'duration_s' : duration_s
         }
-        self._store.data[self.hass.name]['datapoints'].append(datapoint)
-        self._store.save()
-        self.predictor.learn(self._store.data[self.hass.name]['datapoints'])
+        datapoints = None
+        with self._store.lock:
+            self._store.data[self.hass.name]['datapoints'].append(datapoint)
+            self._store.save()
+            datapoints = self._store.data[self.hass.name]['datapoints']
+        self.predictor.learn(datapoints)
 
     def predict(self, target_temp):
         '''predict the number of seconds required to reach target_temp'''
