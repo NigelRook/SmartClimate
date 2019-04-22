@@ -7,6 +7,9 @@ class SensorSet:
     def __iter__(self):
         return iter(self._sensors)
 
+    def __len__(self):
+        return len(self._sensors)
+
     def get_readings(self):
         '''return readings for all sensors, or None on error'''
         sensor_readings = [(self._get_sensor_name(sensor), self._read_sensor(sensor))
