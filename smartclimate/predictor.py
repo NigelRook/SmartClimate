@@ -1,19 +1,16 @@
-import logging
-
-_LOGGER = logging.getLogger(__name__)
-
 class LinearPredictor:
     '''Linear regression model for predicting heating time'''
-    def __init__(self, name):
+    def __init__(self, name, hasslog):
         from sklearn import linear_model
         self._name = name
+        self.log = hasslog
         self._predictor = linear_model.LinearRegression()
         self._ready = False
 
     def predict(self, target_temp, current_temp, sensor_readings):
         '''Predict the time to reach target_temp'''
         if not self._ready:
-            _LOGGER.debug("[%s] Insufficient data, not making prediction")
+            self.log.debug("[{}] Insufficient data, not making prediction", self._name)
             return None
 
         prediction = (self._predictor.intercept_ +
@@ -24,8 +21,8 @@ class LinearPredictor:
 
         prediction = int(round(prediction))
 
-        _LOGGER.debug("[%s] Prediction for %s %s %s: %s", self._name,
-                      target_temp, current_temp, sensor_readings, prediction)
+        self.log.debug("[{}] Prediction for {} {} {}: {}", self._name,
+                       target_temp, current_temp, sensor_readings, prediction)
         return prediction
 
     def learn(self, datapoints):
@@ -39,8 +36,8 @@ class LinearPredictor:
         y_values = [datapoint['duration_s'] for datapoint in datapoints]
         self._predictor.fit(x_values, y_values)
         self._ready = True
-        _LOGGER.debug("[%s] Intercept:%s Coefficients:%s", self._name,
-                      self._predictor.intercept_, self._predictor.coef_)
+        self.log.debug("[{}] Intercept:{} Coefficients:{}", self._name,
+                       self._predictor.intercept_, self._predictor.coef_)
 
     @staticmethod
     def check_ready(datapoints):

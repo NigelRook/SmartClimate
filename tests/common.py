@@ -20,6 +20,11 @@ class FakeStore:
         '''save'''
         self.saved = True
 
+class FakeLogger:
+    # pylint: disable=invalid-name
+    def isEnabledFor(self, level):
+        return True
+
 class FakeHass:
     def __init__(self):
         self.name = "test"
@@ -87,3 +92,9 @@ class FakeHass:
                                for handle, (time, callback) in self._time_triggers.items()
                                if time > when.astimezone(timezone.utc)}
         self.time = when
+
+    def get_main_log(self):
+        return FakeLogger()
+
+    def log(self, message, level=None):
+        pass

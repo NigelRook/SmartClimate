@@ -1,7 +1,4 @@
-import logging
 from datetime import timezone
-
-_LOGGER = logging.getLogger(__name__)
 
 class Tracker:
     '''Class for tracking temperature changes to learn from'''
@@ -23,10 +20,10 @@ class Tracker:
 
     def handle_update(self, old_state, new_state):
         '''handle state update of the tracked climate entity'''
-        _LOGGER.debug('new state for %s: curr=%s, target=%s',
-                      self._entity_id,
-                      new_state["attributes"]["current_temperature"],
-                      new_state["attributes"]["temperature"])
+        self._parent.debug('new state for {}: curr={}, target={}',
+                           self._entity_id,
+                           new_state["attributes"]["current_temperature"],
+                           new_state["attributes"]["temperature"])
 
         if not old_state:
             return
@@ -60,10 +57,10 @@ class Tracker:
         self._tracking_state = self.TRACKING
         self._tracking_started_time = self._parent.hass.datetime().astimezone(timezone.utc)
 
-        _LOGGER.info('Tracking %s from %s to %s',
-                     self._entity_id, self._start_temp, self._target_temp)
+        self._parent.info('Tracking {} from {} to {}',
+                          self._entity_id, self._start_temp, self._target_temp)
         if self._sensor_readings:
-            _LOGGER.debug('initial sensor readings: %s', self._sensor_readings)
+            self._parent.debug('initial sensor readings: {}', self._sensor_readings)
 
     def _handle_tracked_temp_change(self, current_temp):
         if current_temp < self._target_temp:
@@ -82,13 +79,13 @@ class Tracker:
         self._tracking_state = self.IDLE
 
         if end_temp <= self._start_temp:
-            _LOGGER.info("Tracking aborted for %s - no temperature change", self._entity_id)
+            self._parent.info("Tracking aborted for {} - no temperature change", self._entity_id)
             return
 
         now = self._parent.hass.datetime().astimezone(timezone.utc)
         duration_s = (now - self._tracking_started_time).total_seconds()
-        _LOGGER.info("Tracking complete for %s, took %s seconds",
-                     self._entity_id, duration_s)
+        self._parent.info("Tracking complete for {}, took {} seconds",
+                          self._entity_id, duration_s)
         self._parent.add_datapoint(end_temp, self._start_temp, self._sensor_readings, duration_s)
 
     @staticmethod

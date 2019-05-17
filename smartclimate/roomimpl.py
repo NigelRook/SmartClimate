@@ -1,25 +1,24 @@
-import logging
+from hasslog import HassLog
 from sensorset import SensorSet
 from tracker import Tracker
 from predictor import LinearPredictor
 from smartevent import SmartEvent
 from smartsensor import SmartSensor
 
-_LOGGER = logging.getLogger(__name__)
-
-class RoomImpl:
+class RoomImpl(HassLog):
     '''Implementation of Room'''
 
     default_preheat = 3600
 
     def __init__(self, app):
+        super().__init__(app)
         self.hass = app
         self._preheats = {}
         self._climate_entity = self.hass.args["entity_id"]
         self._sensors = SensorSet(self, self.hass.args.get("sensors", []))
 
-        _LOGGER.info("Initialising room %s for entity %s with %d sensors",
-                      self.hass.name, self._climate_entity, len(self._sensors))
+        self.info("Initialising room {} for entity {} with {} sensors",
+                  self.hass.name, self._climate_entity, len(self._sensors))
 
         self._tracker = Tracker(self._climate_entity, self._sensors, self)
 
@@ -33,7 +32,7 @@ class RoomImpl:
 
             datapoints = self._store.data[self.hass.name]["datapoints"]
 
-        self.predictor = LinearPredictor(self.hass.name)
+        self.predictor = LinearPredictor(self.hass.name, self)
         self.predictor.learn(datapoints)
 
         self.hass.listen_state(self._handle_climate_updated, self._climate_entity, attribute="all")
@@ -50,13 +49,12 @@ class RoomImpl:
             self.hass.listen_state(self._handle_sensor_updated, sensor['entity_id'])
 
     def _handle_climate_updated(self, entity, attribute, old, new, kwargs):
-        _LOGGER.debug("Climate entity updated to %s from %s", new, old)
         self._tracker.handle_update(old, new)
         for _, preheat in self._preheats.items():
             preheat.update()
 
     def _handle_sensor_updated(self, entity, attribute, old, new, kwargs):
-        _LOGGER.debug("Sensor entity %s (attr:%s) updated", entity, attribute)
+        self.debug("Sensor entity {} (attr:{}) updated", entity, attribute)
         for _, preheat in self._preheats.items():
             preheat.update()
 
@@ -66,23 +64,23 @@ class RoomImpl:
 
         name = data['name']
         if name in self._preheats:
-            _LOGGER.debug("Cancelling existing preheat %s", name)
+            self.debug("Cancelling existing preheat {}", name)
             self._preheats[name].cancel()
 
         target_temp = data['target_temp']
         preheat_type = data.get('type', 'event')
         if preheat_type == 'event':
             target_time = data['target_time']
-            _LOGGER.info("Adding preheat event %s temp=%s, time=%s", name, target_temp, target_time)
+            self.info("Adding preheat event {} temp={}, time={}", name, target_temp, target_time)
             self._preheats[name] = SmartEvent(name, target_temp, target_time, self)
         elif preheat_type == 'sensor':
-            _LOGGER.info("Adding preheat sensor %s temp=%s", name, target_temp)
+            self.info("Adding preheat sensor {} temp={}", name, target_temp)
             self._preheats[name] = SmartSensor(name, target_temp, self)
 
     def _handle_clear_preheat(self, event, data, kwargs):
         name = data['name']
         if name in self._preheats:
-            _LOGGER.info("Clearing preheat %s", name)
+            self.info("Clearing preheat {}", name)
             self._preheats[name].cancel()
             del self._preheats[name]
 
