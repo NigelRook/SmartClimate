@@ -36,7 +36,7 @@ class RoomImpl:
         self.predictor = LinearPredictor(self.hass.name)
         self.predictor.learn(datapoints)
 
-        self.hass.listen_state(self._handle_climate_updated, self._climate_entity)
+        self.hass.listen_state(self._handle_climate_updated, self._climate_entity, attribute="all")
         for sensor in self._sensors:
             self._listen_sensor_state(sensor)
 
