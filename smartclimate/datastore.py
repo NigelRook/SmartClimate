@@ -17,6 +17,10 @@ class DataStore(hass.Hass):
         '''Get data'''
         return self.impl.data
 
+    @property
+    def lock(self):
+        return self.impl.lock
+
     def save(self):
         '''Commit current data to disk'''
         self.impl.save()
