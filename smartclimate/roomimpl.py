@@ -67,7 +67,7 @@ class RoomImpl(HassLog):
             self.debug("Cancelling existing preheat {}", name)
             self._preheats[name].cancel()
 
-        target_temp = data['target_temp']
+        target_temp = float(data['target_temp'])
         preheat_type = data.get('type', 'event')
         if preheat_type == 'event':
             target_time = data['target_time']
