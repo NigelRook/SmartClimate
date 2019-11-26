@@ -41,7 +41,10 @@ class SmartEvent:
         if trigger_time <= self._parent.hass.datetime().astimezone(timezone.utc):
             self._fire_event()
         else:
-            self._timer = self._parent.hass.run_at(self._handle_timer, trigger_time)
+            # ugh, appdaemon uses timezone-naive local time...
+            ad_trigger_time = trigger_time.astimezone().replace(tzinfo=None)
+            self._parent.info("Setting event {} timer for {}", self._name, ad_trigger_time)
+            self._timer = self._parent.hass.run_at(self._handle_timer, ad_trigger_time)
 
     def _fire_event(self):
         self._triggered = True

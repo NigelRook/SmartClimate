@@ -85,12 +85,12 @@ class FakeHass:
     def advance_time(self, when):
         callbacks = [callback
                      for (time, callback) in self._time_triggers.values()
-                     if time <= when.astimezone(timezone.utc)]
+                     if time.astimezone(timezone.utc) <= when.astimezone(timezone.utc)]
         for callback in callbacks:
             callback()
         self._time_triggers = {handle: (time, callback)
                                for handle, (time, callback) in self._time_triggers.items()
-                               if time > when.astimezone(timezone.utc)}
+                               if time.astimezone(timezone.utc) > when.astimezone(timezone.utc)}
         self.time = when
 
     def get_main_log(self):
