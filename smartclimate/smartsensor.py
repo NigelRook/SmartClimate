@@ -11,7 +11,7 @@ class SmartSensor:
         prediction = self._parent.predict(self._target_temp)
         prediction = prediction if prediction is not None else self._parent.default_preheat
         attributes = {'target_temp': self._target_temp}
-        self._parent.warning("setting state for %s to %s with attrs %s", 'sensor.'+self._name, prediction, attributes)
+        self._parent.info("setting state for {} to {} with attrs {}", 'sensor.'+self._name, prediction, attributes)
         self._parent.hass.set_state('sensor.'+self._name, state=prediction, attributes=attributes)
 
     def cancel(self):

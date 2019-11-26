@@ -48,6 +48,7 @@ class SmartEvent:
 
     def _fire_event(self):
         self._triggered = True
+        self._parent.info("Firing event {}", self._name)
         self._parent.hass.fire_event('smartclimate.start_preheat', name=self._name, target_temp=self._target_temp)
 
     def cancel(self):

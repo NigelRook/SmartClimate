@@ -16,6 +16,7 @@ class SensorSet:
                            for sensor in self._sensors]
 
         if None in (value for (_, value) in sensor_readings):
+            self._parent.warning("Failed getting one or more sensor readings...")
             return None
 
         return sensor_readings
