@@ -43,9 +43,9 @@ def test_preheat_event():
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 29, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 30))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_clear_preheat_event():
     hass.time = time_of_day(hour=4)
@@ -60,7 +60,7 @@ def test_clear_preheat_event():
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.trigger_event_callback('smartclimate.clear_preheat', {'room': 'test', 'name': 'test'})
     hass.advance_time(time_of_day(6, 30))
-    assert hass.fired_events == []
+    assert events() == []
 
 def test_preheat_event_default_duration():
     hass.time = time_of_day(hour=4)
@@ -70,9 +70,9 @@ def test_preheat_event_default_duration():
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(5, 59, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 00))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_updates_trigger_time_on_temp_change():
     hass.time = time_of_day(hour=4)
@@ -92,9 +92,9 @@ def test_preheat_event_updates_trigger_time_on_temp_change():
     hass.trigger_state_callback('climate.test', None, old_state, new_state)
 
     hass.advance_time(time_of_day(6, 29, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 30))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_with_sensor():
     hass.time = time_of_day(hour=4)
@@ -115,9 +115,9 @@ def test_preheat_event_with_sensor():
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 20))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_with_named_sensor():
     hass.time = time_of_day(hour=4)
@@ -138,9 +138,9 @@ def test_preheat_event_with_named_sensor():
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 20))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_with_ttribute_sensor():
     hass.time = time_of_day(hour=4)
@@ -161,9 +161,9 @@ def test_preheat_event_with_ttribute_sensor():
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 20))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_with_sensor_reschedules_on_sensor_change():
     hass.time = time_of_day(hour=4)
@@ -190,9 +190,9 @@ def test_preheat_event_with_sensor_reschedules_on_sensor_change():
     hass.trigger_state_callback('sensor.test', None, old_state, new_state)
 
     hass.advance_time(time_of_day(6, 19, 59))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 20))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_can_immediately_trigger():
     hass.time = time_of_day(6, 40)
@@ -205,7 +205,7 @@ def test_preheat_event_can_immediately_trigger():
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': 21, 'target_time': '07:00'})
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
 def test_preheat_event_after_trigger_time_triggers_next_day():
     hass.time = time_of_day(7, 1)
@@ -218,8 +218,11 @@ def test_preheat_event_after_trigger_time_triggers_next_day():
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'room': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 29, 59, extradays=1))
-    assert hass.fired_events == []
+    assert events() == []
     hass.advance_time(time_of_day(6, 30, extradays=1))
-    assert hass.fired_events == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+    assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
+
+def events():
+    return [event for event in hass.fired_events if event['event'] == 'smartclimate.start_preheat']

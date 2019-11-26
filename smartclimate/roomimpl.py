@@ -42,6 +42,8 @@ class RoomImpl(HassLog):
         self.hass.listen_event(self._handle_set_preheat, "smartclimate.set_preheat", room=self.hass.name)
         self.hass.listen_event(self._handle_clear_preheat, "smartclimate.clear_preheat")
 
+        self.hass.fire_event("smartclimate.up", room=self.hass.name)
+
     def _listen_sensor_state(self, sensor):
         if 'attribute' in sensor:
             self.hass.listen_state(self._handle_sensor_updated, sensor['entity_id'], attribute=sensor['attribute'])
