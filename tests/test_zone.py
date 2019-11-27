@@ -1,4 +1,4 @@
-from roomimpl import RoomImpl
+from zoneimpl import ZoneImpl
 from .common import FakeStore, FakeHass
 
 # pylint: disable=global-statement
@@ -19,6 +19,6 @@ def setup_function():
 
 def test_up_event():
     '''Test up event is fired'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     assert hass.fired_events == [{'event': 'smartclimate.up', 'data':{'zone': 'test'}}]

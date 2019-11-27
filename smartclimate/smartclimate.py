@@ -1,8 +1,8 @@
 import appdaemon.plugins.hass.hassapi as hass
 from datastore import DataStore # pylint: disable=unused-import
-from roomimpl import RoomImpl
+from zoneimpl import ZoneImpl
 
-class Room(hass.Hass):
+class Zone(hass.Hass):
     def initialize(self):
         # pylint: disable=attribute-defined-outside-init
-        self.room = RoomImpl(self)
+        self.zone = ZoneImpl(self)

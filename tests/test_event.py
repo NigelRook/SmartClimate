@@ -12,7 +12,7 @@ where t = time to heat in seconds
 
 for tests with no o, s == o
 '''
-from roomimpl import RoomImpl
+from zoneimpl import ZoneImpl
 from .common import FakeStore, FakeHass, time_of_day
 
 # pylint: disable=global-statement
@@ -38,9 +38,9 @@ def test_preheat_event():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 29, 59))
     assert events() == []
@@ -54,20 +54,20 @@ def test_clear_preheat_event():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
-    hass.trigger_event_callback('smartclimate.clear_preheat', {'room': 'test', 'name': 'test'})
+    hass.trigger_event_callback('smartclimate.clear_preheat', {'zone': 'test', 'name': 'test'})
     hass.advance_time(time_of_day(6, 30))
     assert events() == []
 
 def test_preheat_event_default_duration():
     hass.time = time_of_day(hour=4)
     hass.states['climate.test'] = {'state': 'Manual', 'attributes': {'temperature':18.0, 'current_temperature':20.5}}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(5, 59, 59))
     assert events() == []
@@ -81,9 +81,9 @@ def test_preheat_event_updates_trigger_time_on_temp_change():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
 
     old_state = hass.states['climate.test']
@@ -110,9 +110,9 @@ def test_preheat_event_with_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
     assert events() == []
@@ -133,9 +133,9 @@ def test_preheat_event_with_named_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
     assert events() == []
@@ -156,9 +156,9 @@ def test_preheat_event_with_ttribute_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test.attr', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     hass.advance_time(time_of_day(6, 19, 59))
     assert events() == []
@@ -179,9 +179,9 @@ def test_preheat_event_with_sensor_reschedules_on_sensor_change():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
 
     old_state = hass.states['sensor.test']
@@ -201,9 +201,9 @@ def test_preheat_event_can_immediately_trigger():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': 21, 'target_time': '07:00'})
     assert events() == [{'event': 'smartclimate.start_preheat', 'data':{'name': 'test', 'target_temp': 21}}]
 
@@ -214,9 +214,9 @@ def test_preheat_event_after_trigger_time_triggers_next_day():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    RoomImpl(hass)
+    ZoneImpl(hass)
     hass.trigger_event_callback('smartclimate.set_preheat',
-                                {'room': 'test', 'name': 'test', 'type': 'event',
+                                {'zone': 'test', 'name': 'test', 'type': 'event',
                                  'target_temp': '21', 'target_time': '07:00'})
     assert events() == []
     hass.advance_time(time_of_day(6, 29, 59, extradays=1))

@@ -5,8 +5,8 @@ from predictor import LinearPredictor
 from smartevent import SmartEvent
 from smartsensor import SmartSensor
 
-class RoomImpl(HassLog):
-    '''Implementation of Room'''
+class ZoneImpl(HassLog):
+    '''Implementation of Zone'''
 
     default_preheat = 3600
 
@@ -17,7 +17,7 @@ class RoomImpl(HassLog):
         self._climate_entity = self.hass.args["entity_id"]
         self._sensors = SensorSet(self, self.hass.args.get("sensors", []))
 
-        self.info("Initialising room {} for entity {} with {} sensors",
+        self.info("Initialising zone {} for entity {} with {} sensors",
                   self.hass.name, self._climate_entity, len(self._sensors))
 
         self._tracker = Tracker(self._climate_entity, self._sensors, self)
@@ -39,10 +39,10 @@ class RoomImpl(HassLog):
         for sensor in self._sensors:
             self._listen_sensor_state(sensor)
 
-        self.hass.listen_event(self._handle_set_preheat, "smartclimate.set_preheat", room=self.hass.name)
+        self.hass.listen_event(self._handle_set_preheat, "smartclimate.set_preheat", zone=self.hass.name)
         self.hass.listen_event(self._handle_clear_preheat, "smartclimate.clear_preheat")
 
-        self.hass.fire_event("smartclimate.up", room=self.hass.name)
+        self.hass.fire_event("smartclimate.up", zone=self.hass.name)
 
     def _listen_sensor_state(self, sensor):
         if 'attribute' in sensor:
@@ -61,7 +61,7 @@ class RoomImpl(HassLog):
             preheat.update()
 
     def _handle_set_preheat(self, event, data, kwargs):
-        if data.get('room', None) != self.hass.name:
+        if data.get('zone', None) != self.hass.name:
             return
 
         name = data['name']

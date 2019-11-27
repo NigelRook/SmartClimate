@@ -1,5 +1,5 @@
 class SensorSet:
-    '''sensors for a particular room'''
+    '''sensors for a particular zone'''
     def __init__(self, parent, sensors):
         self._parent = parent
         self._sensors = sensors

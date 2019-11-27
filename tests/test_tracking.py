@@ -13,7 +13,7 @@ where t = time to heat in seconds
 for tests with no o, s == o
 '''
 from copy import deepcopy
-from roomimpl import RoomImpl
+from zoneimpl import ZoneImpl
 from .common import FakeStore, FakeHass, relative_time
 
 # pylint: disable=global-statement
@@ -34,7 +34,7 @@ def setup_function():
 
 def test_records_temperature_change():
     '''Test a completed temperature shift gets recorded to the store'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
     new_state = {'state': 'Manual', 'attributes': {'temperature': 20., 'current_temperature' : 18.}}
@@ -60,7 +60,7 @@ def test_records_temperature_change():
 
 def test_completes_tracking_if_target_temp_changed_to_below_current():
     '''nothing is recorded if the target temp is changed while tracking'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
     new_state = {'state': 'Manual', 'attributes': {'temperature': 19., 'current_temperature' : 18.}}
@@ -86,7 +86,7 @@ def test_completes_tracking_if_target_temp_changed_to_below_current():
 
 def test_conitinues_tracking_if_target_temp_lowered():
     '''nothing is recorded if the target temp is changed while tracking'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
     new_state = {'state': 'Manual', 'attributes': {'temperature': 20., 'current_temperature' : 18.}}
@@ -117,7 +117,7 @@ def test_conitinues_tracking_if_target_temp_lowered():
 
 def test_conitinues_tracking_if_target_temp_raised():
     '''nothing is recorded if the target temp is changed while tracking'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
     new_state = {'state': 'Manual', 'attributes': {'temperature': 20., 'current_temperature' : 18.}}
@@ -148,7 +148,7 @@ def test_conitinues_tracking_if_target_temp_raised():
 
 def test_ignores_intermediate_states():
     '''Test a completed temperature shift gets recorded to the store'''
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
     new_state = {'state': 'Manual', 'attributes': {'temperature': 20., 'current_temperature' : 18.}}
@@ -185,7 +185,7 @@ def test_records_additional_sensors():
         {'entity_id': 'sensor.sensor2', 'attribute': 'attr'},
         {'name': 'test_sensor', 'entity_id': 'sensor.sensor3'}
     ]
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     hass.states['sensor.sensor1'] = {'state': 8.0}
     hass.states['sensor.sensor2'] = {'state': 'on', 'attributes': {'attr': '16.0'}}
@@ -234,7 +234,7 @@ def test_doesnt_record_missing_sensor_reading():
     }
     initial_data = deepcopy(store.data)
     hass.args['sensors'] = [{'entity_id': 'sensor.sensor1'}]
-    RoomImpl(hass)
+    ZoneImpl(hass)
 
     #hass.states.set('sensor.sensor1', '8.0')
     old_state = {'state': 'Smart Schedule', 'attributes': {'temperature': 18., 'current_temperature' : 18.}}
