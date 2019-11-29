@@ -5,4 +5,5 @@ from zoneimpl import ZoneImpl
 class Zone(hass.Hass):
     def initialize(self):
         # pylint: disable=attribute-defined-outside-init
-        self.zone = ZoneImpl(self)
+        store = self.get_app(self.config["store"])
+        self.zone = ZoneImpl(self, store)

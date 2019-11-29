@@ -38,7 +38,7 @@ def test_preheat_sensor():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     assert hass.set_states['sensor.prediction'] == {'state': 1800, 'attributes': {'target_temp': 21.0}}
@@ -50,7 +50,7 @@ def test_clear_preheat_sensor():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     hass.trigger_event_callback('smartclimate.clear_preheat', {'zone': 'test', 'name': 'prediction'})
@@ -59,7 +59,7 @@ def test_clear_preheat_sensor():
 def test_preheat_sensor_default_duration():
     hass.time = time_of_day(hour=4)
     hass.states['climate.test'] = {'state': 'Manual', 'attributes': {'temperature':18.0, 'current_temperature':20.5}}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     assert hass.set_states['sensor.prediction'] == {'state': 3600, 'attributes': {'target_temp': 21.0}}
@@ -71,7 +71,7 @@ def test_preheat_sensor_updates_trigger_time_on_temp_change():
                   {'start_temp':19.0, 'target_temp':20.0, 'duration_s':2700.0, 'sensor_readings':[]},
                   {'start_temp':18.0, 'target_temp':20.0, 'duration_s':4500.0, 'sensor_readings':[]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
 
@@ -96,7 +96,7 @@ def test_preheat_sensor_with_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     assert hass.set_states['sensor.prediction'] == {'state': 2400, 'attributes': {'target_temp': 21.0}}
@@ -115,7 +115,7 @@ def test_preheat_sensor_with_named_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     assert hass.set_states['sensor.prediction'] == {'state': 2400, 'attributes': {'target_temp': 21.0}}
@@ -134,7 +134,7 @@ def test_preheat_sensor_with_attribute_sensor():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test.attr', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
     assert hass.set_states['sensor.prediction'] == {'state': 2400, 'attributes': {'target_temp': 21.0}}
@@ -153,7 +153,7 @@ def test_preheat_sensor_with_sensor_updates_on_sensor_change():
                   {'start_temp':20.0, 'target_temp':21.0, 'duration_s':2940.0,
                    'sensor_readings':[('sensor.test', 16.0)]}]
     store.data['test'] = {'datapoints': datapoints}
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
     hass.trigger_event_callback('smartclimate.set_preheat',
                                 {'zone': 'test', 'name': 'prediction', 'type': 'sensor', 'target_temp': 21})
 

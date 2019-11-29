@@ -19,6 +19,6 @@ def setup_function():
 
 def test_up_event():
     '''Test up event is fired'''
-    ZoneImpl(hass)
+    ZoneImpl(hass, store)
 
     assert hass.fired_events == [{'event': 'smartclimate.up', 'data':{'zone': 'test'}}]

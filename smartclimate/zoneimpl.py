@@ -4,25 +4,26 @@ from tracker import Tracker
 from predictor import LinearPredictor
 from smartevent import SmartEvent
 from smartsensor import SmartSensor
+from appdaemon_hass_interface import AppDaemonHassInterface
 
 class ZoneImpl(HassLog):
     '''Implementation of Zone'''
 
     default_preheat = 3600
 
-    def __init__(self, app):
+    def __init__(self, app, store):
         super().__init__(app)
-        self.hass = app
+        self.hass = AppDaemonHassInterface(app)
         self._preheats = {}
-        self._climate_entity = self.hass.args["entity_id"]
-        self._sensors = SensorSet(self, self.hass.args.get("sensors", []))
+        self._climate_entity = self.hass.config["entity_id"]
+        self._sensors = SensorSet(self, self.hass.config.get("sensors", []))
 
         self.info("Initialising zone {} for entity {} with {} sensors",
                   self.hass.name, self._climate_entity, len(self._sensors))
 
         self._tracker = Tracker(self._climate_entity, self._sensors, self)
 
-        self._store = self.hass.get_app(self.hass.args["store"])
+        self._store = store
         datapoints = None
         with self._store.lock:
             if self.hass.name not in self._store.data:
@@ -50,17 +51,17 @@ class ZoneImpl(HassLog):
         else:
             self.hass.listen_state(self._handle_sensor_updated, sensor['entity_id'])
 
-    def _handle_climate_updated(self, entity, attribute, old, new, kwargs):
+    def _handle_climate_updated(self, entity_id, new, old):
         self._tracker.handle_update(old, new)
         for _, preheat in self._preheats.items():
             preheat.update()
 
-    def _handle_sensor_updated(self, entity, attribute, old, new, kwargs):
-        self.debug("Sensor entity {} (attr:{}) updated", entity, attribute)
+    def _handle_sensor_updated(self, entity_id, new, old):
+        self.debug("Sensor entity {} updated", entity_id)
         for _, preheat in self._preheats.items():
             preheat.update()
 
-    def _handle_set_preheat(self, event, data, kwargs):
+    def _handle_set_preheat(self, event, data):
         if data.get('zone', None) != self.hass.name:
             return
 
@@ -79,7 +80,7 @@ class ZoneImpl(HassLog):
             self.info("Adding preheat sensor {} temp={}", name, target_temp)
             self._preheats[name] = SmartSensor(name, target_temp, self)
 
-    def _handle_clear_preheat(self, event, data, kwargs):
+    def _handle_clear_preheat(self, event, data):
         name = data['name']
         if name in self._preheats:
             self.info("Clearing preheat {}", name)
