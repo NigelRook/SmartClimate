@@ -1,6 +1,6 @@
 attrs==20.3.0
 iniconfig==1.1.1
-joblib==0.17.0
+joblib==1.2.0
 numpy==1.19.4
 packaging==20.7
 pluggy==0.13.1
